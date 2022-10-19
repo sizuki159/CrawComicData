@@ -14,36 +14,72 @@ namespace CrawComicData
     {
         static void Main(string[] args)
         {
-            using (WebClient client = new WebClient())
+            const string URL_COMIC = "https://truyenqqpro.com/truyen-tranh/bach-luyen-thanh-than-1099";
+            const string cookie = "visit-read=63381157ab16c-63381157ab16e; _ga=GA1.2.1766211325.1664618840; VinaHost-Shield=963760baec790e27a22555fe62e522c8; QiQiSession=usjca2uog55pm8bnpe4sre5o6a; _gid=GA1.2.1955350355.1666149466; _gat_gtag_UA_55970084_1=1";
+            const string useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36";
+
+            // Init
+            if(!Directory.Exists("comic"))
+                Directory.CreateDirectory("comic");
+
+
+            using (MyWebClient client = new MyWebClient(useragent, cookie))
             {
+                string rawComic = client.DownloadString(URL_COMIC);
+                HtmlDocument htmlDocumentComic = new HtmlDocument();
+                htmlDocumentComic.LoadHtml(rawComic);
 
-                string cookie = "visit-read=63381157ab16c-63381157ab16e; _ga=GA1.2.1766211325.1664618840; VinaHost-Shield=efe5487042804a144922f824a20f40dc; QiQiSession=mp9un231906mmlt5208qpfrq24; _gid=GA1.2.646586248.1665886188; _gat_gtag_UA_55970084_1=1";
-                string useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36";
-                client.Encoding = Encoding.UTF8;
+                // Get Infor Comic
+                HtmlNode avatarNode = htmlDocumentComic.DocumentNode.SelectSingleNode("//div[contains(@class, 'book_avatar')]");
+                HtmlNode nameNode = htmlDocumentComic.DocumentNode.SelectSingleNode("//h1[contains(@itemprop, 'name')]");
+                HtmlNode descriptionNode = htmlDocumentComic.DocumentNode.SelectSingleNode("//div[contains(@class, 'story-detail-info detail-content')]");
+                string avatarURL = avatarNode.ChildNodes.FirstOrDefault().GetAttributes("src").First().Value.Replace("?gf=hdfgdfg&mobile=2", string.Empty);
+                string name = nameNode.InnerText.Trim();
+                string desc = descriptionNode.InnerText.Trim();
+                string nameSlug = name.GenerateSlug();
+                string pathComic = Path.Combine("comic", nameSlug);
+                if (!Directory.Exists(pathComic))
+                    Directory.CreateDirectory(pathComic);
+                // End Get Infor
 
-                client.Headers[HttpRequestHeader.UserAgent] = useragent;
-                client.Headers[HttpRequestHeader.Cookie] = cookie;
-                client.Headers[HttpRequestHeader.ContentType] = "text/html; charset=UTF-8";
+                Console.WriteLine("Start Craw " + name);
 
-                string raw = client.DownloadString("https://truyenqqpro.com/truyen-tranh/ajin-chan-wa-kataritai-11988");
-                File.WriteAllText("data.html", raw);
-                HtmlDocument htmlDocument = new HtmlDocument();
-                htmlDocument.LoadHtml(raw);
-                HtmlNodeCollection htmlNodes = htmlDocument.DocumentNode.SelectNodes("//a[contains(@target, '_self')]");
-                if (htmlNodes == null) throw new Exception("Null");
+                MyWebClient.SetHeader(client, useragent, cookie);
+                //client.Headers[HttpRequestHeader.Referer] = "https://truyenqqpro.com/";
+                client.DownloadFile(avatarURL, Path.Combine(pathComic, Path.GetFileName(avatarURL)));
+
+                using (StreamWriter sw = File.AppendText(Path.Combine(pathComic, "info.txt")))
+                {
+                    sw.WriteLine(name);
+                    sw.WriteLine(desc);
+                }
+
+                HtmlNodeCollection htmlNodes = htmlDocumentComic.DocumentNode.SelectNodes("//a[contains(@target, '_self')]");
+
+                if (htmlNodes.Count == 0) throw new Exception("Empty");
+
                 if (htmlNodes.Count > 0)
                 {
                     foreach (HtmlNode node in htmlNodes)
                     {
+                        // Get Infor Chapter
+                        string chapterName = node.InnerText;
                         string urlChapter = node.GetAttributes("href").First().Value;
 
-                        client.Headers[HttpRequestHeader.Cookie] = cookie;
-                        client.Headers[HttpRequestHeader.UserAgent] = useragent;
-                        client.Headers[HttpRequestHeader.ContentType] = "text/html; charset=UTF-8";
+                        string pathChapter = Path.Combine(pathComic, chapterName);
+                        if (!Directory.Exists(pathChapter))
+                            Directory.CreateDirectory(pathChapter);
+                        // End Get Infor
+
+                        Console.WriteLine("Crawling " + chapterName);
+
+                        MyWebClient.SetHeader(client, useragent, cookie);
 
                         string content = client.DownloadString(urlChapter);
-                        htmlDocument.LoadHtml(content);
-                        HtmlNodeCollection htmlNodesContent = htmlDocument.DocumentNode.SelectNodes("//div[contains(@class, 'page-chapter')]");
+
+                        HtmlDocument htmlDocumentChapter = new HtmlDocument();
+                        htmlDocumentChapter.LoadHtml(content);
+                        HtmlNodeCollection htmlNodesContent = htmlDocumentChapter.DocumentNode.SelectNodes("//div[contains(@class, 'page-chapter')]");
                         if (htmlNodesContent.Count > 0)
                         {
                             List<string> filenames = new List<string>();
@@ -55,9 +91,8 @@ namespace CrawComicData
                                 matchString = matchString.Replace("?gf=hdfgdfg", string.Empty);
                                 if (!matchString.Contains("http"))
                                     matchString = matchString.Replace("//", "https://");
-                                client.Headers[HttpRequestHeader.UserAgent] = useragent;
-                                client.Headers[HttpRequestHeader.ContentType] = "text/html; charset=UTF-8";
-                                client.Headers[HttpRequestHeader.Cookie] = cookie;
+
+                                MyWebClient.SetHeader(client, useragent, cookie);
                                 client.Headers[HttpRequestHeader.Referer] = "https://truyenqqpro.com/";
 
 
@@ -65,10 +100,9 @@ namespace CrawComicData
                                 if (filenames.Contains(fileName))
                                     fileName = fileName + "";
                                 filenames.Add(fileName);
-                                client.DownloadFile(matchString, @"images\" + fileName);
+                                client.DownloadFile(matchString, Path.Combine(pathChapter, fileName));
                             }
                         }
-                        return;
                     }
                 }
             }
