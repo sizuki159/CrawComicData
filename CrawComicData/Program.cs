@@ -14,8 +14,8 @@ namespace CrawComicData
     {
         static void Main(string[] args)
         {
-            const string URL_COMIC = "https://truyenqqpro.com/truyen-tranh/bach-luyen-thanh-than-1099";
-            const string cookie = "visit-read=63381157ab16c-63381157ab16e; _ga=GA1.2.1766211325.1664618840; VinaHost-Shield=963760baec790e27a22555fe62e522c8; QiQiSession=usjca2uog55pm8bnpe4sre5o6a; _gid=GA1.2.1955350355.1666149466; _gat_gtag_UA_55970084_1=1";
+            const string URL_COMIC = "https://truyenqqpro.com/truyen-tranh/tho-san-nha-van-13149";
+            const string cookie = "visit-read=6340da5b75b70-6340da5b75b72; _ga=GA1.2.284098249.1665194588; VinaHost-Shield=c1b7a868a3a6f6aa8f5327249bbe60b6; QiQiSession=ouac1i70ajgjbp53erk4j9m79a; _gid=GA1.2.1323408573.1666258789; _gat_gtag_UA_55970084_1=1";
             const string useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36";
 
             // Init
